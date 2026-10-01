@@ -13,12 +13,15 @@ const apiClient = axios.create({
 });
 
 let isRefreshing = false;
-
 let refreshPromise: Promise<string | null> | null = null;
 
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const accessToken = await authStorage.getAccessToken();
+
+    console.log(
+      `[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+    );
 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
@@ -29,9 +32,30 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(
+      `[API SUCCESS] ${response.config.method?.toUpperCase()} ${response.config.url}`,
+      response.status,
+    );
+
+    return response;
+  },
 
   async (error: AxiosError<ApiErrorResponse>) => {
+    console.log("========== API ERROR ==========");
+
+    console.log("Message:", error.message);
+    console.log("Code:", error.code);
+    console.log("URL:", `${error.config?.baseURL}${error.config?.url}`);
+    console.log("Method:", error.config?.method);
+    console.log("Status:", error.response?.status);
+    console.log("Response:", error.response?.data);
+    console.log("Request exists:", !!error.request);
+    console.log("Error name:", error.name);
+    console.log("Error stack:", error.stack);
+
+    console.log("================================");
+
     const originalRequest = error.config;
 
     if (
@@ -80,6 +104,8 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   try {
+    console.log("[AUTH REFRESH] Requesting new access token...");
+
     const response = await axios.post(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
@@ -102,8 +128,12 @@ async function refreshAccessToken(): Promise<string | null> {
       authResponse.refreshToken,
     );
 
+    console.log("[AUTH REFRESH] Success");
+
     return authResponse.accessToken;
   } catch (error) {
+    console.log("[AUTH REFRESH] Failed", error);
+
     await authStorage.clearTokens();
     throw error;
   }

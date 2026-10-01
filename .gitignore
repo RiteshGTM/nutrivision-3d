@@ -1,0 +1,12 @@
+# IntelliJ IDEA / Android Studio
+.idea/
+
+# VS Code
+.vscode/
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
