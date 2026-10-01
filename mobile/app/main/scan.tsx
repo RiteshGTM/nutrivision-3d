@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions, FlashMode } from "expo-camera";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -7,6 +8,7 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -17,6 +19,13 @@ import { analysisService } from "../../src/features/analysis/services/analysisSe
 
 export default function ScanScreen() {
   const [loading, setLoading] = useState(false);
+  const [facing, setFacing] = useState<"back" | "front">("back");
+  const [flash, setFlash] = useState<FlashMode>("off");
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const toggleFlash = () => {
+    setFlash((current) => (current === "off" ? "on" : "off"));
+  };
 
   const handleCapture = async () => {
     if (loading) {
@@ -60,9 +69,43 @@ export default function ScanScreen() {
     }
   };
 
+  if (!permission) {
+    // Camera permissions are still loading
+    return <View style={styles.screen} />;
+  }
+
+  if (!permission.granted) {
+    // Camera permissions are not granted yet
+    return (
+      <View style={styles.permissionContainer}>
+        <Ionicons name="camera-outline" size={64} color={colors.white} />
+        <Text style={styles.permissionText}>
+          We need your permission to show the camera
+        </Text>
+        <TouchableOpacity
+          style={styles.permissionButton}
+          onPress={requestPermission}
+        >
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.cameraPreview}>
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing={facing}
+          flash={flash}
+        />
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
@@ -77,11 +120,18 @@ export default function ScanScreen() {
             <Text style={styles.title}>Scan your food</Text>
 
             <Pressable
-              style={styles.iconButton}
-              onPress={() => {}}
+              style={[
+                styles.iconButton,
+                flash === "on" && styles.iconButtonActive,
+              ]}
+              onPress={toggleFlash}
               disabled={loading}
             >
-              <Ionicons name="flash-outline" size={22} color={colors.white} />
+              <Ionicons
+                name={flash === "on" ? "flash" : "flash-outline"}
+                size={22}
+                color={flash === "on" ? "#FFD700" : colors.white}
+              />
             </Pressable>
           </View>
 
@@ -123,10 +173,21 @@ export default function ScanScreen() {
               <View style={styles.captureInner} pointerEvents="none" />
             </Pressable>
 
-            {/* Placeholder */}
-            <View style={styles.sideButton}>
-              <View style={styles.sideButtonPlaceholder} />
-            </View>
+            {/* Switch Camera Side Button */}
+            <Pressable
+              style={styles.sideButton}
+              onPress={() =>
+                setFacing((current) => (current === "back" ? "front" : "back"))
+              }
+              disabled={loading}
+            >
+              <Ionicons
+                name="camera-reverse-outline"
+                size={24}
+                color={colors.white}
+              />
+              <Text style={styles.sideButtonText}>Flip</Text>
+            </Pressable>
           </View>
         </SafeAreaView>
       </View>
@@ -243,7 +304,47 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
 
-  captureDisabled: {
-    opacity: 0.6,
+  iconButtonActive: {
+    backgroundColor: "rgba(255, 215, 0, 0.2)",
+  },
+
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: "#111111",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+
+  permissionText: {
+    color: colors.white,
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+
+  permissionButton: {
+    backgroundColor: colors.primary || "#10B981",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+
+  permissionButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  backButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+
+  backButtonText: {
+    color: "#888888",
+    fontSize: 14,
   },
 });
